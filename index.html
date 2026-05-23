@@ -444,20 +444,41 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   }
 
   // ── Supabase 동기화 ──
+  function setSyncStatus(msg, isError) {
+    var el = document.getElementById('syncTime');
+    el.textContent = msg;
+    el.style.color = isError ? '#EF4444' : '#94A3B8';
+  }
+
   function syncUp(callback) {
-    if (!sbReady || !userId) { if (callback) callback(false); return; }
+    if (!sbReady || !userId) {
+      setSyncStatus('Supabase 연결 안 됨', true);
+      if (callback) callback(false);
+      return;
+    }
+    setSyncStatus('동기화 중...', false);
     sb.from('steps')
       .upsert(
         { employee_id: userId, name: userName, date: today(), steps: todaySteps, updated_at: new Date().toISOString() },
         { onConflict: 'employee_id,date' }
       )
       .then(function (res) {
-        if (res.error) { if (callback) callback(false); return; }
+        if (res.error) {
+          console.error('동기화 오류:', res.error);
+          setSyncStatus('오류: ' + res.error.message, true);
+          if (callback) callback(false);
+          return;
+        }
         lastSyncTs = Date.now();
         saveSyncTs(lastSyncTs);
         unsyncedSteps = 0;
-        document.getElementById('syncTime').textContent = fmtTime(lastSyncTs);
+        setSyncStatus(fmtTime(lastSyncTs), false);
         if (callback) callback(true);
+      })
+      .catch(function (err) {
+        console.error('동기화 예외:', err);
+        setSyncStatus('오류: ' + (err.message || '알 수 없는 오류'), true);
+        if (callback) callback(false);
       });
   }
 
