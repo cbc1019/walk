@@ -285,8 +285,8 @@ input  { font-family: inherit; -webkit-appearance: none; }
     <div class="page active" id="pageSteps">
       <div class="card">
         <div class="sensor-row">
-          <div class="sensor-dot active" id="sensorDot"></div>
-          <div class="sensor-label" id="sensorLabel">걸음 측정 중...</div>
+          <div class="sensor-dot" id="sensorDot"></div>
+          <div class="sensor-label" id="sensorLabel">측정 준비 중...</div>
         </div>
         <div class="steps-display">
           <div class="steps-num" id="stepsNum">0</div>
@@ -647,6 +647,8 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     }
     window.addEventListener('devicemotion', onMotion);
     isTracking = true;
+    document.getElementById('sensorDot').className = 'sensor-dot active';
+    document.getElementById('sensorLabel').textContent = '걸음 측정 중...';
     // 60초마다 자동 동기화
     syncTimer = setInterval(function () { if (unsyncedSteps > 0) syncUp(); }, 60000);
   }
@@ -753,7 +755,23 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
 
   // ── 자동 로그인 ──
   var saved = loadUser();
-  if (saved && saved.id && saved.name) login(saved.id, saved.name);
+  if (saved && saved.id && saved.name) {
+    login(saved.id, saved.name);
+    // iOS는 사용자 제스처 필요 → 첫 탭에 측정 시작
+    if (typeof DeviceMotionEvent !== 'undefined' &&
+        typeof DeviceMotionEvent.requestPermission === 'function') {
+      document.getElementById('sensorDot').className = 'sensor-dot';
+      document.getElementById('sensorLabel').textContent = '화면을 탭하면 측정이 시작됩니다';
+      var _startOnTap = function () {
+        document.removeEventListener('click', _startOnTap);
+        startTracking();
+      };
+      document.addEventListener('click', _startOnTap);
+    } else {
+      // Android / PC: 즉시 시작
+      startTracking();
+    }
+  }
 
 })();
 </script>
