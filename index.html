@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="걷기챌린지">
+<meta name="theme-color" content="#2563EB">
+<title>병원 걷기 챌린지</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  background: #EFF6FF;
+  color: #1E293B;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button { font-family: inherit; border: none; cursor: pointer; -webkit-appearance: none; touch-action: manipulation; }
+input  { font-family: inherit; -webkit-appearance: none; }
+
+/* ===== LOGIN ===== */
+#loginPage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #2563EB 0%, #1E40AF 100%);
+}
+.login-logo { font-size: 64px; margin-bottom: 10px; }
+.login-title { font-size: 26px; font-weight: 800; color: white; margin-bottom: 4px; }
+.login-sub   { font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 36px; }
+.login-card  {
+  background: white;
+  border-radius: 24px;
+  padding: 28px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+}
+.field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748B;
+  margin-bottom: 6px;
+}
+.text-input {
+  width: 100%;
+  background: #F8FAFC;
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 17px;
+  color: #1E293B;
+  margin-bottom: 16px;
+  transition: border-color 0.2s;
+}
+.text-input:focus { outline: none; border-color: #3B82F6; }
+.login-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  color: white;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(59,130,246,0.4);
+  margin-top: 4px;
+}
+.login-btn:active { transform: scale(0.97); }
+
+/* ===== APP SHELL ===== */
+.app { display: none; flex-direction: column; height: 100vh; }
+.app.visible { display: flex; }
+
+.app-header {
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
+  color: white;
+  padding-top: env(safe-area-inset-top);
+  flex-shrink: 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 10px;
+}
+.header-title { font-size: 17px; font-weight: 800; }
+.header-user  { font-size: 12px; opacity: 0.85; }
+
+.tabs {
+  display: flex;
+  padding: 0 8px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  background: none;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+.tab-btn.active { color: white; border-bottom-color: white; }
+
+.pages { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.page { display: none; padding: 16px; }
+.page.active { display: block; }
+
+/* ===== CARDS ===== */
+.card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94A3B8;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* ===== STEPS PAGE ===== */
+.sensor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sensor-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: #CBD5E1;
+  flex-shrink: 0;
+}
+.sensor-dot.active { background: #22C55E; animation: blink 1.4s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.sensor-label { font-size: 13px; color: #64748B; }
+
+.steps-display { text-align: center; padding: 8px 0 20px; }
+.steps-num {
+  font-size: 88px;
+  font-weight: 900;
+  color: #2563EB;
+  line-height: 1;
+  letter-spacing: -3px;
+  font-variant-numeric: tabular-nums;
+}
+.steps-unit { font-size: 16px; color: #94A3B8; margin-top: 4px; }
+
+.progress-wrap { margin-bottom: 20px; }
+.progress-bg {
+  background: #E2E8F0;
+  border-radius: 99px;
+  height: 10px;
+  overflow: hidden;
+}
+.progress-fill {
+  background: linear-gradient(90deg, #3B82F6, #6366F1);
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #94A3B8;
+  margin-top: 6px;
+}
+
+.track-btn {
+  width: 100%;
+  padding: 18px;
+  border-radius: 16px;
+  font-size: 18px;
+  font-weight: 800;
+  transition: transform 0.15s;
+  margin-bottom: 16px;
+}
+.track-btn:active { transform: scale(0.97); }
+.track-btn.start {
+  background: linear-gradient(135deg, #22C55E, #16A34A);
+  color: white;
+  box-shadow: 0 4px 16px rgba(34,197,94,0.35);
+}
+.track-btn.stop {
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  color: white;
+  box-shadow: 0 4px 16px rgba(239,68,68,0.35);
+}
+
+.manual-section-label { font-size: 13px; color: #94A3B8; margin-bottom: 8px; }
+.manual-row { display: flex; gap: 8px; align-items: center; }
+.manual-input {
+  flex: 1;
+  background: #F8FAFC;
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+  color: #1E293B;
+}
+.manual-input:focus { outline: none; border-color: #3B82F6; }
+.btn-set {
+  background: #3B82F6;
+  color: white;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.btn-add {
+  background: #6366F1;
+  color: white;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.btn-set:active { background: #2563EB; }
+.btn-add:active { background: #4F46E5; }
+
+.sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #F1F5F9;
+}
+.sync-time { font-size: 12px; color: #94A3B8; }
+.sync-btn {
+  background: #EFF6FF;
+  color: #3B82F6;
+  border: 1px solid #BFDBFE;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.sync-btn:active { background: #DBEAFE; }
+
+/* ===== RANKING PAGE ===== */
+.rank-toggle {
+  display: flex;
+  background: #F1F5F9;
+  border-radius: 14px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.rank-toggle-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748B;
+  background: none;
+  transition: all 0.2s;
+}
+.rank-toggle-btn.active {
+  background: white;
+  color: #2563EB;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+}
+
+.period-badge {
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 12px;
+  color: #2563EB;
+  font-weight: 600;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+.rank-item:last-child { border-bottom: none; }
+.rank-item.me {
+  background: #EFF6FF;
+  border-radius: 14px;
+  padding: 13px 14px;
+  margin: 2px -8px;
+  border-bottom: none;
+}
+
+.rank-medal {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-right: 14px;
+}
+.medal-1 { background: #FEF3C7; }
+.medal-2 { background: #F1F5F9; }
+.medal-3 { background: #FEF2F2; }
+.medal-n { background: #F8FAFC; font-size: 14px; color: #94A3B8; }
+
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-name.me { color: #2563EB; }
+.rank-empid { font-size: 12px; color: #94A3B8; margin-top: 2px; }
+
+.rank-steps { text-align: right; flex-shrink: 0; }
+.rank-steps-num { font-size: 20px; font-weight: 800; color: #2563EB; }
+.rank-steps-unit { font-size: 11px; color: #94A3B8; }
+
+.refresh-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+.refresh-btn {
+  background: none;
+  color: #94A3B8;
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+.empty-msg { text-align: center; color: #94A3B8; font-size: 14px; padding: 32px 16px; }
+
+/* ===== SETTINGS PAGE ===== */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid #F1F5F9;
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-key { font-size: 15px; color: #1E293B; }
+.setting-val { font-size: 15px; color: #64748B; }
+
+.form-input {
+  width: 100%;
+  background: #F8FAFC;
+  border: 2px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: #1E293B;
+  margin-bottom: 10px;
+}
+.form-input:focus { outline: none; border-color: #3B82F6; }
+
+.primary-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #3B82F6, #2563EB);
+  color: white;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.primary-btn:active { transform: scale(0.97); }
+
+.danger-btn {
+  width: 100%;
+  background: #FEF2F2;
+  color: #EF4444;
+  border: 1px solid #FEE2E2;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.danger-btn:active { background: #FEE2E2; }
+
+.notice-box {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  border-radius: 12px;
+  padding: 14px;
+  font-size: 13px;
+  color: #92400E;
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+.notice-box b { color: #B45309; }
+
+/* Firebase error notice */
+#fbError {
+  display: none;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #991B1B;
+  margin-bottom: 14px;
+}
+</style>
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginPage">
+  <div class="login-logo">🏥</div>
+  <div class="login-title">병원 걷기 챌린지</div>
+  <div class="login-sub">사번과 이름을 입력하고 참여하세요</div>
+
+  <div class="login-card">
+    <div class="field-label">사번 (직원 번호)</div>
+    <input type="text" id="loginId" class="text-input" placeholder="예: 20240001" inputmode="text" autocomplete="off">
+
+    <div class="field-label">이름</div>
+    <input type="text" id="loginName" class="text-input" placeholder="예: 홍길동" autocomplete="off">
+
+    <button type="button" class="login-btn" id="loginBtn">참여하기 →</button>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div class="app" id="mainApp">
+  <div class="app-header">
+    <div class="header-top">
+      <div class="header-title">🏥 걷기 챌린지</div>
+      <div class="header-user" id="headerUser"></div>
+    </div>
+    <div class="tabs">
+      <button type="button" class="tab-btn active" id="tabSteps">🚶 내 걸음</button>
+      <button type="button" class="tab-btn" id="tabRanking">🏆 순위</button>
+      <button type="button" class="tab-btn" id="tabSettings">⚙️ 설정</button>
+    </div>
+  </div>
+
+  <div class="pages">
+
+    <!-- ===== 내 걸음 ===== -->
+    <div class="page active" id="pageSteps">
+      <div class="card">
+        <div class="sensor-row">
+          <div class="sensor-dot" id="sensorDot"></div>
+          <div class="sensor-label" id="sensorLabel">측정 대기 중</div>
+        </div>
+
+        <div class="steps-display">
+          <div class="steps-num" id="stepsNum">0</div>
+          <div class="steps-unit">걸음</div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-bg">
+            <div class="progress-fill" id="progressFill" style="width:0%"></div>
+          </div>
+          <div class="progress-row">
+            <span id="progressPct">0%</span>
+            <span>목표 10,000보</span>
+          </div>
+        </div>
+
+        <button type="button" class="track-btn start" id="trackBtn">▶ 걸음 측정 시작</button>
+
+        <div class="manual-section-label">걸음 수 직접 입력</div>
+        <div class="manual-row">
+          <input type="number" class="manual-input" id="manualInput" placeholder="걸음 수" inputmode="numeric" min="0">
+          <button type="button" class="btn-set" id="btnSet">설정</button>
+          <button type="button" class="btn-add" id="btnAdd">+ 추가</button>
+        </div>
+
+        <div class="sync-row">
+          <div class="sync-time" id="syncTime">동기화 안 됨</div>
+          <button type="button" class="sync-btn" id="syncBtn">☁ 동기화</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 순위 ===== -->
+    <div class="page" id="pageRanking">
+      <div id="fbError">⚠️ Firebase 연결 실패. 설정 탭의 안내를 확인해 주세요.</div>
+
+      <div class="rank-toggle">
+        <button type="button" class="rank-toggle-btn active" id="toggleToday">오늘 순위</button>
+        <button type="button" class="rank-toggle-btn" id="toggleTotal">기간 누적</button>
+      </div>
+
+      <div class="period-badge" id="periodBadge">기간 미설정</div>
+
+      <div class="refresh-row">
+        <button type="button" class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
+      </div>
+
+      <div class="card" id="rankingCard">
+        <div class="empty-msg">데이터를 불러오는 중...</div>
+      </div>
+    </div>
+
+    <!-- ===== 설정 ===== -->
+    <div class="page" id="pageSettings">
+      <div class="card">
+        <div class="section-label">내 프로필</div>
+        <div class="setting-row">
+          <div class="setting-key">사번</div>
+          <div class="setting-val" id="profileId">-</div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-key">이름</div>
+          <div class="setting-val" id="profileName">-</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-label">챌린지 기간 설정</div>
+        <div style="font-size:13px; color:#64748B; margin-bottom:14px;">저장하면 모든 참여자에게 동일하게 적용됩니다</div>
+        <div class="field-label">챌린지 이름</div>
+        <input type="text" id="inputChallengeName" class="form-input" placeholder="예: 6월 건강 걷기 챌린지">
+        <div class="field-label">시작일</div>
+        <input type="date" id="inputStart" class="form-input">
+        <div class="field-label">종료일</div>
+        <input type="date" id="inputEnd" class="form-input">
+        <button type="button" class="primary-btn" id="savePeriodBtn">기간 저장하기</button>
+      </div>
+
+      <div class="card">
+        <div class="section-label">Firebase 연결 안내</div>
+        <div class="notice-box">
+          이 앱은 실시간 랭킹 공유를 위해 <b>Firebase</b>가 필요합니다.<br><br>
+          <b>설정 방법:</b><br>
+          1. <b>console.firebase.google.com</b> 접속<br>
+          2. 새 프로젝트 생성<br>
+          3. Realtime Database 생성 (테스트 모드)<br>
+          4. 프로젝트 설정 → 웹 앱 추가 → Config 복사<br>
+          5. 이 HTML 파일 상단 <b>firebaseConfig</b> 부분에 붙여넣기
+        </div>
+      </div>
+
+      <div class="card">
+        <button type="button" class="danger-btn" id="logoutBtn">로그아웃</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ================================================================
+// ▼▼▼  Firebase 설정 - 아래를 본인 프로젝트 정보로 교체하세요!  ▼▼▼
+// ================================================================
+var firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+// ================================================================
+
+(function () {
+  'use strict';
+
+  // ── Firebase 초기화 ──
+  var db = null;
+  var fbReady = false;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    fbReady = true;
+  } catch (e) { console.warn('Firebase 초기화 실패:', e); }
+
+  // ── 상태 ──
+  var userId    = null;
+  var userName  = null;
+  var todaySteps = 0;
+  var isTracking = false;
+  var lastSyncTs = null;
+  var unsyncedSteps = 0;
+  var rankMode = 'today';
+  var period   = null;
+  var syncTimer = null;
+  var rankOffFn = null;
+
+  // ── 걸음 감지 변수 ──
+  var smoothedMag = 9.8;
+  var lastStepTs  = 0;
+  var aboveThresh = false;
+  var THRESHOLD   = 2.5;
+  var MIN_GAP     = 280;
+
+  // ── 유틸 ──
+  function dateStr(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  function today() { return dateStr(); }
+  function fmtNum(n) { return Number(n || 0).toLocaleString('ko-KR'); }
+  function fmtTime(ts) {
+    if (!ts) return '동기화 안 됨';
+    var d = new Date(ts);
+    return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + ' 동기화됨';
+  }
+
+  // ── LocalStorage ──
+  function lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch(e) {} }
+
+  function loadUser()  { try { return JSON.parse(lsGet('wc_user') || 'null'); } catch(e) { return null; } }
+  function saveUser(id, name) { lsSet('wc_user', JSON.stringify({id:id, name:name})); }
+  function loadSteps() { return parseInt(lsGet('wc_steps_' + today()) || '0'); }
+  function saveSteps(n){ lsSet('wc_steps_' + today(), String(n)); }
+  function loadSyncTs(){ return parseInt(lsGet('wc_sync') || '0') || null; }
+  function saveSyncTs(t){ lsSet('wc_sync', String(t)); }
+
+  // ── UI 업데이트 ──
+  function updateStepsUI() {
+    document.getElementById('stepsNum').textContent = fmtNum(todaySteps);
+    var pct = Math.min(100, Math.round(todaySteps / 10000 * 100));
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('progressPct').textContent = pct + '%';
+  }
+
+  function updateSyncUI() {
+    document.getElementById('syncTime').textContent = fmtTime(lastSyncTs);
+  }
+
+  // ── Firebase 동기화 ──
+  function syncUp(callback) {
+    if (!fbReady || !userId) { if (callback) callback(false); return; }
+    var ref = db.ref('steps/' + today() + '/' + userId);
+    ref.set({ steps: todaySteps, name: userName, ts: Date.now() })
+      .then(function () {
+        lastSyncTs = Date.now();
+        saveSyncTs(lastSyncTs);
+        unsyncedSteps = 0;
+        updateSyncUI();
+        // 사용자 정보도 함께 저장
+        db.ref('users/' + userId).set({ name: userName, employeeId: userId });
+        if (callback) callback(true);
+      })
+      .catch(function () { if (callback) callback(false); });
+  }
+
+  // ── 기간 ──
+  function loadPeriod() {
+    if (!fbReady) return;
+    db.ref('period').on('value', function (snap) {
+      var v = snap.val();
+      if (v) { period = v; applyPeriodUI(); }
+    });
+  }
+
+  function applyPeriodUI() {
+    if (!period) { document.getElementById('periodBadge').textContent = '기간 미설정'; return; }
+    document.getElementById('periodBadge').textContent =
+      (period.name || '챌린지') + '  ' + period.start + ' ~ ' + period.end;
+    if (period.name)  document.getElementById('inputChallengeName').value = period.name;
+    if (period.start) document.getElementById('inputStart').value = period.start;
+    if (period.end)   document.getElementById('inputEnd').value = period.end;
+  }
+
+  function savePeriod() {
+    if (!fbReady) { alert('Firebase 연결이 필요합니다.'); return; }
+    var name  = document.getElementById('inputChallengeName').value.trim();
+    var start = document.getElementById('inputStart').value;
+    var end   = document.getElementById('inputEnd').value;
+    if (!start || !end) { alert('시작일과 종료일을 입력해 주세요.'); return; }
+    if (start > end)   { alert('종료일이 시작일보다 앞에 있습니다.'); return; }
+    db.ref('period').set({ name: name || '걷기 챌린지', start: start, end: end })
+      .then(function () { alert('기간이 저장되었습니다! ✅'); })
+      .catch(function () { alert('저장 실패. Firebase 설정을 확인해 주세요.'); });
+  }
+
+  // ── 랭킹 ──
+  function detachRanking() {
+    if (rankOffFn) { rankOffFn(); rankOffFn = null; }
+  }
+
+  function loadRanking() {
+    detachRanking();
+    document.getElementById('fbError').style.display = fbReady ? 'none' : '';
+    if (!fbReady) {
+      document.getElementById('rankingCard').innerHTML = '<div class="empty-msg">Firebase 연결이 필요합니다</div>';
+      return;
+    }
+    document.getElementById('rankingCard').innerHTML = '<div class="empty-msg">불러오는 중...</div>';
+
+    if (rankMode === 'today') {
+      var ref = db.ref('steps/' + today());
+      var handler = ref.on('value', function (snap) {
+        renderRanking(flattenDayData(snap.val() || {}));
+      });
+      rankOffFn = function () { ref.off('value', handler); };
+    } else {
+      if (!period || !period.start || !period.end) {
+        document.getElementById('rankingCard').innerHTML = '<div class="empty-msg">설정 탭에서 챌린지 기간을 먼저 설정해 주세요</div>';
+        return;
+      }
+      var ref2 = db.ref('steps');
+      var handler2 = ref2.on('value', function (snap) {
+        var all = snap.val() || {};
+        var totals = {};
+        Object.keys(all).forEach(function (d) {
+          if (d < period.start || d > period.end) return;
+          var day = all[d];
+          Object.keys(day).forEach(function (uid) {
+            var e = day[uid];
+            var steps = typeof e === 'object' ? (e.steps || 0) : Number(e);
+            var name  = typeof e === 'object' ? (e.name  || uid) : uid;
+            if (!totals[uid]) totals[uid] = { steps: 0, name: name };
+            totals[uid].steps += steps;
+          });
+        });
+        renderRanking(Object.keys(totals).map(function (uid) {
+          return { uid: uid, steps: totals[uid].steps, name: totals[uid].name };
+        }));
+      });
+      rankOffFn = function () { ref2.off('value', handler2); };
+    }
+  }
+
+  function flattenDayData(data) {
+    return Object.keys(data).map(function (uid) {
+      var e = data[uid];
+      return {
+        uid:   uid,
+        steps: typeof e === 'object' ? (e.steps || 0) : Number(e),
+        name:  typeof e === 'object' ? (e.name  || uid) : uid
+      };
+    });
+  }
+
+  function renderRanking(list) {
+    list.sort(function (a, b) { return b.steps - a.steps; });
+    if (list.length === 0) {
+      document.getElementById('rankingCard').innerHTML = '<div class="empty-msg">아직 참여자가 없어요 👟<br>걸음 측정 후 동기화하면 나타납니다</div>';
+      return;
+    }
+    var medals = ['🥇', '🥈', '🥉'];
+    var html = '';
+    list.forEach(function (item, i) {
+      var isMe = item.uid === userId;
+      var medalClass = i < 3 ? 'medal-' + (i + 1) : 'medal-n';
+      var medalContent = i < 3 ? medals[i] : (i + 1);
+      html +=
+        '<div class="rank-item' + (isMe ? ' me' : '') + '">' +
+          '<div class="rank-medal ' + medalClass + '">' + medalContent + '</div>' +
+          '<div class="rank-info">' +
+            '<div class="rank-name' + (isMe ? ' me' : '') + '">' +
+              item.name + (isMe ? ' (나)' : '') +
+            '</div>' +
+            '<div class="rank-empid">사번 ' + item.uid + '</div>' +
+          '</div>' +
+          '<div class="rank-steps">' +
+            '<div class="rank-steps-num">' + fmtNum(item.steps) + '</div>' +
+            '<div class="rank-steps-unit">걸음</div>' +
+          '</div>' +
+        '</div>';
+    });
+    document.getElementById('rankingCard').innerHTML = html;
+  }
+
+  // ── 걸음 감지 ──
+  function onMotion(e) {
+    if (!isTracking) return;
+    var acc = e.accelerationIncludingGravity;
+    if (!acc || acc.x === null) return;
+    var x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
+    var mag = Math.sqrt(x * x + y * y + z * z);
+    smoothedMag = 0.15 * mag + 0.85 * smoothedMag;
+    var dev = mag - smoothedMag;
+    var now = Date.now();
+    if (!aboveThresh && dev > THRESHOLD && now - lastStepTs > MIN_GAP) {
+      aboveThresh = true;
+      lastStepTs  = now;
+      todaySteps++;
+      unsyncedSteps++;
+      saveSteps(todaySteps);
+      updateStepsUI();
+      if (unsyncedSteps >= 100) syncUp();
+    } else if (aboveThresh && dev < 0.5) {
+      aboveThresh = false;
+    }
+  }
+
+  async function startTracking() {
+    if (typeof DeviceMotionEvent === 'undefined') {
+      alert('이 기기는 동작 센서를 지원하지 않습니다.\n걸음 수를 직접 입력해 주세요.');
+      return;
+    }
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      try {
+        var perm = await DeviceMotionEvent.requestPermission();
+        if (perm !== 'granted') {
+          alert('동작 센서 권한이 필요합니다.\n설정 → Safari → 동작 및 방향 접근 허용');
+          return;
+        }
+      } catch (ex) { console.warn(ex); }
+    }
+    window.addEventListener('devicemotion', onMotion);
+    isTracking = true;
+    document.getElementById('trackBtn').textContent = '⏹ 측정 중지';
+    document.getElementById('trackBtn').className = 'track-btn stop';
+    document.getElementById('sensorDot').className = 'sensor-dot active';
+    document.getElementById('sensorLabel').textContent = '걸음 측정 중...';
+    syncTimer = setInterval(function () {
+      if (unsyncedSteps > 0) syncUp();
+    }, 60000);
+  }
+
+  function stopTracking() {
+    window.removeEventListener('devicemotion', onMotion);
+    isTracking = false;
+    if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+    syncUp();
+    document.getElementById('trackBtn').textContent = '▶ 걸음 측정 시작';
+    document.getElementById('trackBtn').className = 'track-btn start';
+    document.getElementById('sensorDot').className = 'sensor-dot';
+    document.getElementById('sensorLabel').textContent = '측정 중지됨';
+  }
+
+  // ── 탭 전환 ──
+  function switchTab(name) {
+    ['pageSteps','pageRanking','pageSettings'].forEach(function (id) {
+      document.getElementById(id).classList.remove('active');
+    });
+    ['tabSteps','tabRanking','tabSettings'].forEach(function (id) {
+      document.getElementById(id).classList.remove('active');
+    });
+    if (name === 'steps') {
+      document.getElementById('pageSteps').classList.add('active');
+      document.getElementById('tabSteps').classList.add('active');
+    } else if (name === 'ranking') {
+      document.getElementById('pageRanking').classList.add('active');
+      document.getElementById('tabRanking').classList.add('active');
+      loadRanking();
+    } else if (name === 'settings') {
+      document.getElementById('pageSettings').classList.add('active');
+      document.getElementById('tabSettings').classList.add('active');
+    }
+  }
+
+  // ── 로그인 ──
+  function login(id, name) {
+    userId   = id.trim();
+    userName = name.trim();
+    saveUser(userId, userName);
+
+    document.getElementById('loginPage').style.display  = 'none';
+    document.getElementById('mainApp').classList.add('visible');
+    document.getElementById('headerUser').textContent    = name + ' (' + id + ')';
+    document.getElementById('profileId').textContent     = userId;
+    document.getElementById('profileName').textContent   = userName;
+
+    todaySteps = loadSteps();
+    lastSyncTs = loadSyncTs();
+    updateStepsUI();
+    updateSyncUI();
+    loadPeriod();
+    syncUp();
+  }
+
+  function logout() {
+    if (!confirm('로그아웃 하시겠습니까?')) return;
+    if (isTracking) stopTracking();
+    detachRanking();
+    lsDel('wc_user');
+    userId = null; userName = null;
+    document.getElementById('mainApp').classList.remove('visible');
+    document.getElementById('loginPage').style.display = '';
+    document.getElementById('loginId').value   = '';
+    document.getElementById('loginName').value = '';
+  }
+
+  // ── 이벤트 바인딩 ──
+  document.getElementById('loginBtn').addEventListener('click', function () {
+    var id   = document.getElementById('loginId').value.trim();
+    var name = document.getElementById('loginName').value.trim();
+    if (!id || !name) { alert('사번과 이름을 모두 입력해 주세요.'); return; }
+    login(id, name);
+  });
+  ['loginId','loginName'].forEach(function (eid) {
+    document.getElementById(eid).addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') document.getElementById('loginBtn').click();
+    });
+  });
+
+  document.getElementById('trackBtn').addEventListener('click', function () {
+    if (isTracking) stopTracking(); else startTracking();
+  });
+
+  document.getElementById('syncBtn').addEventListener('click', function () {
+    syncUp(function (ok) {
+      if (!ok) alert('동기화 실패. Firebase 설정을 확인해 주세요.');
+    });
+  });
+
+  document.getElementById('btnSet').addEventListener('click', function () {
+    var v = parseInt(document.getElementById('manualInput').value);
+    if (isNaN(v) || v < 0) { alert('올바른 숫자를 입력해 주세요.'); return; }
+    todaySteps = v; unsyncedSteps++;
+    saveSteps(todaySteps); updateStepsUI();
+    document.getElementById('manualInput').value = '';
+    syncUp();
+  });
+
+  document.getElementById('btnAdd').addEventListener('click', function () {
+    var v = parseInt(document.getElementById('manualInput').value);
+    if (isNaN(v) || v <= 0) { alert('추가할 걸음 수를 입력해 주세요.'); return; }
+    todaySteps += v; unsyncedSteps += v;
+    saveSteps(todaySteps); updateStepsUI();
+    document.getElementById('manualInput').value = '';
+    syncUp();
+  });
+
+  document.getElementById('tabSteps').addEventListener('click',    function () { switchTab('steps'); });
+  document.getElementById('tabRanking').addEventListener('click',  function () { switchTab('ranking'); });
+  document.getElementById('tabSettings').addEventListener('click', function () { switchTab('settings'); });
+
+  document.getElementById('toggleToday').addEventListener('click', function () {
+    rankMode = 'today';
+    document.getElementById('toggleToday').classList.add('active');
+    document.getElementById('toggleTotal').classList.remove('active');
+    loadRanking();
+  });
+  document.getElementById('toggleTotal').addEventListener('click', function () {
+    rankMode = 'total';
+    document.getElementById('toggleTotal').classList.add('active');
+    document.getElementById('toggleToday').classList.remove('active');
+    loadRanking();
+  });
+  document.getElementById('refreshBtn').addEventListener('click', loadRanking);
+
+  document.getElementById('savePeriodBtn').addEventListener('click', savePeriod);
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+
+  // 화면 복귀 시 자동 동기화
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && userId && unsyncedSteps > 0) syncUp();
+  });
+
+  // ── 자동 로그인 ──
+  var saved = loadUser();
+  if (saved && saved.id && saved.name) login(saved.id, saved.name);
+
+})();
+</script>
+</body>
+</html>
