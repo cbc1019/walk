@@ -257,7 +257,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
   <div class="login-sub">사번과 이름을 입력하고 참여하세요</div>
   <div class="login-card">
     <div class="field-label">사번 (직원 번호)</div>
-    <input type="text" id="loginId"   class="text-input" placeholder="예: 20240001" inputmode="text" autocomplete="off">
+    <input type="text" id="loginId"   class="text-input" placeholder="예: 190950" inputmode="text" autocomplete="off">
     <div class="field-label">이름</div>
     <input type="text" id="loginName" class="text-input" placeholder="예: 홍길동" autocomplete="off">
     <button type="button" class="login-btn" id="loginBtn">참여하기 →</button>
@@ -302,12 +302,6 @@ input  { font-family: inherit; -webkit-appearance: none; }
           </div>
         </div>
         <button type="button" class="track-btn start" id="trackBtn">▶ 걸음 측정 시작</button>
-        <div style="font-size:13px; color:#94A3B8; margin-bottom:8px;">걸음 수 직접 입력</div>
-        <div class="manual-row">
-          <input type="number" class="manual-input" id="manualInput" placeholder="걸음 수" inputmode="numeric" min="0">
-          <button type="button" class="btn-blue"   id="btnSet">설정</button>
-          <button type="button" class="btn-indigo" id="btnAdd">+추가</button>
-        </div>
         <div class="sync-row">
           <div class="sync-time" id="syncTime">동기화 안 됨</div>
           <button type="button" class="sync-btn" id="syncBtn">☁ 동기화</button>
@@ -740,24 +734,6 @@ var SUPABASE_ANON_KEY = 'sb_publishable_1dh2UQigkcCICgn3W1Ce1Q_4PuMHTxO';
 
   document.getElementById('syncBtn').addEventListener('click', function(){
     syncUp(function(ok){ if (!ok) alert('동기화 실패. Supabase 설정을 확인해 주세요.'); });
-  });
-
-  document.getElementById('btnSet').addEventListener('click', function(){
-    var v = parseInt(document.getElementById('manualInput').value);
-    if (isNaN(v) || v < 0) { alert('올바른 숫자를 입력해 주세요.'); return; }
-    todaySteps = v; unsyncedSteps++;
-    saveSteps(todaySteps); updateStepsUI();
-    document.getElementById('manualInput').value = '';
-    syncUp();
-  });
-
-  document.getElementById('btnAdd').addEventListener('click', function(){
-    var v = parseInt(document.getElementById('manualInput').value);
-    if (isNaN(v) || v <= 0) { alert('추가할 걸음 수를 입력해 주세요.'); return; }
-    todaySteps += v; unsyncedSteps += v;
-    saveSteps(todaySteps); updateStepsUI();
-    document.getElementById('manualInput').value = '';
-    syncUp();
   });
 
   document.getElementById('tabSteps').addEventListener('click',    function(){ switchTab('steps'); });
