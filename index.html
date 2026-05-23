@@ -254,10 +254,12 @@ input  { font-family: inherit; -webkit-appearance: none; }
 <div id="loginPage">
   <div class="login-logo">🏥</div>
   <div class="login-title">병원 걷기 챌린지</div>
-  <div class="login-sub">사번과 이름을 입력하고 참여하세요</div>
+  <div class="login-sub">사번, 부서, 이름을 입력하고 참여하세요</div>
   <div class="login-card">
     <div class="field-label">사번 (직원 번호)</div>
     <input type="text" id="loginId"   class="text-input" placeholder="예: 190950" inputmode="text" autocomplete="off">
+    <div class="field-label">부서</div>
+    <input type="text" id="loginDept" class="text-input" placeholder="예: 간호부" autocomplete="off">
     <div class="field-label">이름</div>
     <input type="text" id="loginName" class="text-input" placeholder="예: 홍길동" autocomplete="off">
     <button type="button" class="login-btn" id="loginBtn">참여하기 →</button>
@@ -392,6 +394,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   // ── 상태 ──
   var userId       = null;
   var userName     = null;
+  var userDept     = null;
   var todaySteps   = 0;
   var isTracking   = false;
   var lastSyncTs   = null;
@@ -428,7 +431,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   function lsSet(k,v){ try { localStorage.setItem(k, v); }           catch(e) {} }
   function lsDel(k)  { try { localStorage.removeItem(k); }           catch(e) {} }
   function loadUser()  { try { return JSON.parse(lsGet('wc_user') || 'null'); } catch(e) { return null; } }
-  function saveUser(id, name) { lsSet('wc_user', JSON.stringify({id:id, name:name})); }
+  function saveUser(id, dept, name) { lsSet('wc_user', JSON.stringify({id:id, dept:dept, name:name})); }
   function loadSteps() { return parseInt(lsGet('wc_steps_' + today()) || '0'); }
   function saveSteps(n){ lsSet('wc_steps_' + today(), String(n)); }
   function loadSyncTs(){ return parseInt(lsGet('wc_sync') || '0') || null; }
@@ -458,7 +461,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     setSyncStatus('동기화 중...', false);
     sb.from('steps')
       .upsert(
-        { employee_id: userId, name: userName, date: today(), steps: todaySteps, updated_at: new Date().toISOString() },
+        { employee_id: userId, dept: userDept, name: userName, date: today(), steps: todaySteps, updated_at: new Date().toISOString() },
         { onConflict: 'employee_id,date' }
       )
       .then(function (res) {
@@ -564,7 +567,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
 
     // 실시간 순위 = 오늘 걸음 수 기준
     sb.from('steps')
-      .select('employee_id, name, steps')
+      .select('employee_id, dept, name, steps')
       .eq('date', today())
       .order('steps', { ascending: false })
       .then(function (res) {
@@ -597,7 +600,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
             '<div class="rank-name' + (isMe ? ' me' : '') + '">' +
               item.name + (isMe ? ' (나)' : '') +
             '</div>' +
-            '<div class="rank-empid">사번 ' + item.employee_id + '</div>' +
+            '<div class="rank-empid">' + (item.dept || '') + '</div>' +
           '</div>' +
           '<div class="rank-right">' +
             '<div class="rank-steps-num">' + fmtNum(item.steps) + '</div>' +
@@ -684,15 +687,16 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   }
 
   // ── 로그인 ──
-  function login(id, name) {
+  function login(id, dept, name) {
     userId   = id.trim();
+    userDept = (dept || '').trim();
     userName = name.trim();
-    saveUser(userId, userName);
+    saveUser(userId, userDept, userName);
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('mainApp').classList.add('visible');
-    document.getElementById('headerUser').textContent  = name + ' (' + id + ')';
+    document.getElementById('headerUser').textContent  = userDept + ' ' + userName;
     document.getElementById('profileId').textContent   = userId;
-    document.getElementById('profileName').textContent = userName;
+    document.getElementById('profileName').textContent = userDept + ' ' + userName;
     todaySteps = loadSteps();
     lastSyncTs = loadSyncTs();
     updateStepsUI();
@@ -710,10 +714,11 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     if (isTracking) stopTracking();
     stopRankPolling();
     lsDel('wc_user');
-    userId = null; userName = null;
+    userId = null; userDept = null; userName = null;
     document.getElementById('mainApp').classList.remove('visible');
     document.getElementById('loginPage').style.display = '';
     document.getElementById('loginId').value   = '';
+    document.getElementById('loginDept').value = '';
     document.getElementById('loginName').value = '';
     switchTab('steps'); // 탭 초기화
     document.getElementById('mainApp').classList.remove('visible');
@@ -722,14 +727,15 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   // ── 이벤트 ──
   document.getElementById('loginBtn').addEventListener('click', async function () {
     var id   = document.getElementById('loginId').value.trim();
+    var dept = document.getElementById('loginDept').value.trim();
     var name = document.getElementById('loginName').value.trim();
     var err  = document.getElementById('loginError');
-    if (!id || !name) { err.textContent = '사번과 이름을 모두 입력해 주세요.'; return; }
+    if (!id || !dept || !name) { err.textContent = '사번, 부서, 이름을 모두 입력해 주세요.'; return; }
     err.textContent = '';
-    login(id, name);
-    await startTracking(); // 로그인 즉시 걸음 측정 자동 시작
+    login(id, dept, name);
+    await startTracking();
   });
-  ['loginId','loginName'].forEach(function(eid){
+  ['loginId','loginDept','loginName'].forEach(function(eid){
     document.getElementById(eid).addEventListener('keydown', function(e){
       if (e.key === 'Enter') document.getElementById('loginBtn').click();
     });
@@ -756,7 +762,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   // ── 자동 로그인 ──
   var saved = loadUser();
   if (saved && saved.id && saved.name) {
-    login(saved.id, saved.name);
+    login(saved.id, saved.dept || '', saved.name);
     // iOS는 사용자 제스처 필요 → 첫 탭에 측정 시작
     if (typeof DeviceMotionEvent !== 'undefined' &&
         typeof DeviceMotionEvent.requestPermission === 'function') {
