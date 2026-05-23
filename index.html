@@ -118,7 +118,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
   font-size: 12px; color: #94A3B8; margin-top: 6px;
 }
 
-.track-btn {
+/* .track-btn removed */ ._unused_track_btn {
   width: 100%; padding: 18px; border-radius: 16px;
   font-size: 18px; font-weight: 800; transition: transform 0.15s; margin-bottom: 16px;
 }
@@ -285,8 +285,8 @@ input  { font-family: inherit; -webkit-appearance: none; }
     <div class="page active" id="pageSteps">
       <div class="card">
         <div class="sensor-row">
-          <div class="sensor-dot" id="sensorDot"></div>
-          <div class="sensor-label" id="sensorLabel">측정 대기 중</div>
+          <div class="sensor-dot active" id="sensorDot"></div>
+          <div class="sensor-label" id="sensorLabel">걸음 측정 중...</div>
         </div>
         <div class="steps-display">
           <div class="steps-num" id="stepsNum">0</div>
@@ -301,7 +301,6 @@ input  { font-family: inherit; -webkit-appearance: none; }
             <span>목표 10,000보</span>
           </div>
         </div>
-        <button type="button" class="track-btn start" id="trackBtn">▶ 걸음 측정 시작</button>
         <div class="sync-row">
           <div class="sync-time" id="syncTime">동기화 안 됨</div>
           <button type="button" class="sync-btn" id="syncBtn">☁ 동기화</button>
@@ -631,7 +630,8 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
 
   async function startTracking() {
     if (typeof DeviceMotionEvent === 'undefined') {
-      alert('이 기기는 동작 센서를 지원하지 않습니다.\n걸음 수를 직접 입력해 주세요.');
+      document.getElementById('sensorLabel').textContent = '센서 미지원 기기';
+      document.getElementById('sensorDot').className = 'sensor-dot';
       return;
     }
     if (typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -639,16 +639,14 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
         var perm = await DeviceMotionEvent.requestPermission();
         if (perm !== 'granted') {
           alert('동작 센서 권한이 필요합니다.\n설정 → Safari → 동작 및 방향 접근 허용');
+          document.getElementById('sensorLabel').textContent = '권한 없음';
+          document.getElementById('sensorDot').className = 'sensor-dot';
           return;
         }
       } catch(ex) { console.warn(ex); return; }
     }
     window.addEventListener('devicemotion', onMotion);
     isTracking = true;
-    document.getElementById('trackBtn').textContent  = '⏹ 측정 중지';
-    document.getElementById('trackBtn').className    = 'track-btn stop';
-    document.getElementById('sensorDot').className   = 'sensor-dot active';
-    document.getElementById('sensorLabel').textContent = '걸음 측정 중...';
     // 60초마다 자동 동기화
     syncTimer = setInterval(function () { if (unsyncedSteps > 0) syncUp(); }, 60000);
   }
@@ -658,10 +656,6 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     isTracking = false;
     if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
     syncUp();
-    document.getElementById('trackBtn').textContent    = '▶ 걸음 측정 시작';
-    document.getElementById('trackBtn').className      = 'track-btn start';
-    document.getElementById('sensorDot').className     = 'sensor-dot';
-    document.getElementById('sensorLabel').textContent = '측정 중지됨';
   }
 
   // ── 탭 전환 ──
@@ -737,10 +731,6 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     document.getElementById(eid).addEventListener('keydown', function(e){
       if (e.key === 'Enter') document.getElementById('loginBtn').click();
     });
-  });
-
-  document.getElementById('trackBtn').addEventListener('click', function(){
-    if (isTracking) stopTracking(); else startTracking();
   });
 
   document.getElementById('syncBtn').addEventListener('click', function(){
