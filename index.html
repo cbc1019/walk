@@ -406,8 +406,8 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   var smoothedMag = 9.8;
   var lastStepTs  = 0;
   var aboveThresh = false;
-  var THRESHOLD   = 2.5;
-  var MIN_GAP     = 280;
+  var THRESHOLD   = 4.0;   // 민감도 낮춤 (작은 진동 무시)
+  var MIN_GAP     = 420;   // 최대 분당 142보 (빠른 걷기 기준)
 
   // ── 유틸 ──
   function dateStr(d) {
@@ -614,7 +614,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     if (!acc || acc.x === null) return;
     var x = acc.x||0, y = acc.y||0, z = acc.z||0;
     var mag = Math.sqrt(x*x + y*y + z*z);
-    smoothedMag = 0.15*mag + 0.85*smoothedMag;
+    smoothedMag = 0.10*mag + 0.90*smoothedMag;  // 기준선 더 안정적으로
     var dev = mag - smoothedMag;
     var now = Date.now();
     if (!aboveThresh && dev > THRESHOLD && now - lastStepTs > MIN_GAP) {
