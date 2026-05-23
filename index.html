@@ -311,10 +311,6 @@ input  { font-family: inherit; -webkit-appearance: none; }
 
     <!-- 순위 -->
     <div class="page" id="pageRanking">
-      <div class="rank-toggle">
-        <button type="button" class="rank-toggle-btn active" id="toggleToday">오늘 순위</button>
-        <button type="button" class="rank-toggle-btn"        id="toggleTotal">기간 누적</button>
-      </div>
       <div class="period-badge" id="periodBadge">기간 미설정</div>
       <div class="refresh-row">
         <div class="refresh-info" id="refreshInfo">30초마다 자동 갱신</div>
@@ -380,6 +376,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
 // =============================================================
 var SUPABASE_URL      = 'https://xtvyrwfo.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_1dh2UQigkcCICgn3W1Ce1Q_4PuMHTxO';
+var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['190950','123456'])
 // =============================================================
 
 (function () {
@@ -543,29 +540,15 @@ var SUPABASE_ANON_KEY = 'sb_publishable_1dh2UQigkcCICgn3W1Ce1Q_4PuMHTxO';
     }
     document.getElementById('rankingCard').innerHTML = '<div class="loading-msg">불러오는 중...</div>';
 
-    if (rankMode === 'today') {
-      sb.from('steps')
-        .select('employee_id, name, steps')
-        .eq('date', today())
-        .order('steps', { ascending: false })
-        .then(function (res) {
-          if (res.error) { showRankError(res.error.message); return; }
-          renderRanking(res.data || []);
-        });
-    } else {
-      if (!period || !period.start_date) {
-        document.getElementById('rankingCard').innerHTML = '<div class="empty-msg">설정 탭에서 챌린지 기간을 먼저 설정해 주세요</div>';
-        return;
-      }
-      // 서버 함수로 집계 (1,000명 × 수십 일도 빠르게 처리)
-      sb.rpc('get_period_ranking', { p_start: period.start_date, p_end: period.end_date })
-        .then(function (res) {
-          if (res.error) { showRankError(res.error.message); return; }
-          renderRanking((res.data || []).map(function (r) {
-            return { employee_id: r.employee_id, name: r.name, steps: Number(r.total_steps) };
-          }));
-        });
-    }
+    // 실시간 순위 = 오늘 걸음 수 기준
+    sb.from('steps')
+      .select('employee_id, name, steps')
+      .eq('date', today())
+      .order('steps', { ascending: false })
+      .then(function (res) {
+        if (res.error) { showRankError(res.error.message); return; }
+        renderRanking(res.data || []);
+      });
   }
 
   function showRankError(msg) {
@@ -695,8 +678,12 @@ var SUPABASE_ANON_KEY = 'sb_publishable_1dh2UQigkcCICgn3W1Ce1Q_4PuMHTxO';
     lastSyncTs = loadSyncTs();
     updateStepsUI();
     document.getElementById('syncTime').textContent = fmtTime(lastSyncTs);
+    // 관리자만 설정 탭 표시
+    var isAdmin = ADMIN_IDS.indexOf(userId) >= 0;
+    document.getElementById('tabSettings').style.display = isAdmin ? '' : 'none';
+
     loadPeriod();
-    syncUp(); // 오늘 걸음 수 즉시 업로드
+    syncUp();
   }
 
   function logout() {
@@ -714,13 +701,14 @@ var SUPABASE_ANON_KEY = 'sb_publishable_1dh2UQigkcCICgn3W1Ce1Q_4PuMHTxO';
   }
 
   // ── 이벤트 ──
-  document.getElementById('loginBtn').addEventListener('click', function () {
+  document.getElementById('loginBtn').addEventListener('click', async function () {
     var id   = document.getElementById('loginId').value.trim();
     var name = document.getElementById('loginName').value.trim();
     var err  = document.getElementById('loginError');
     if (!id || !name) { err.textContent = '사번과 이름을 모두 입력해 주세요.'; return; }
     err.textContent = '';
     login(id, name);
+    await startTracking(); // 로그인 즉시 걸음 측정 자동 시작
   });
   ['loginId','loginName'].forEach(function(eid){
     document.getElementById(eid).addEventListener('keydown', function(e){
@@ -740,18 +728,6 @@ var SUPABASE_ANON_KEY = 'sb_publishable_1dh2UQigkcCICgn3W1Ce1Q_4PuMHTxO';
   document.getElementById('tabRanking').addEventListener('click',  function(){ switchTab('ranking'); });
   document.getElementById('tabSettings').addEventListener('click', function(){ switchTab('settings'); });
 
-  document.getElementById('toggleToday').addEventListener('click', function(){
-    rankMode = 'today';
-    document.getElementById('toggleToday').classList.add('active');
-    document.getElementById('toggleTotal').classList.remove('active');
-    loadRanking();
-  });
-  document.getElementById('toggleTotal').addEventListener('click', function(){
-    rankMode = 'total';
-    document.getElementById('toggleTotal').classList.add('active');
-    document.getElementById('toggleToday').classList.remove('active');
-    loadRanking();
-  });
 
   document.getElementById('refreshBtn').addEventListener('click', loadRanking);
   document.getElementById('savePeriodBtn').addEventListener('click', savePeriod);
