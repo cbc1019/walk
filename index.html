@@ -311,7 +311,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
 
     <!-- 순위 -->
     <div class="page" id="pageRanking">
-      <div class="period-badge" id="periodBadge">기간 미설정</div>
+      <div class="period-badge" id="periodBadge" style="display:none"></div>
       <div class="refresh-row">
         <div class="refresh-info" id="refreshInfo">30초마다 자동 갱신</div>
         <button type="button" class="refresh-btn" id="refreshBtn">🔄 새로고침</button>
@@ -514,11 +514,13 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   }
 
   function applyPeriodUI() {
+    var badge = document.getElementById('periodBadge');
     if (!period || !period.start_date) {
-      document.getElementById('periodBadge').textContent = '기간 미설정';
+      badge.style.display = 'none';
       return;
     }
-    document.getElementById('periodBadge').textContent =
+    badge.style.display = '';
+    badge.textContent =
       (period.name || '챌린지') + '  ' + period.start_date + ' ~ ' + period.end_date;
     if (period.name)       document.getElementById('inputChallengeName').value = period.name;
     if (period.start_date) document.getElementById('inputStart').value = period.start_date;
