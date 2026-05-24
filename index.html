@@ -408,8 +408,12 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   var smoothedMag = 9.8;
   var lastStepTs  = 0;
   var aboveThresh = false;
-  var THRESHOLD   = 4.0;   // 민감도 낮춤 (작은 진동 무시)
-  var MIN_GAP     = 420;   // 최대 분당 142보 (빠른 걷기 기준)
+  var stepStreak  = 0;
+  var STEP_LO   = 3.0;    // 걸음으로 볼 최소 가속 변화
+  var STEP_HI   = 12.0;   // 이보다 크면 격한 흔들기로 보고 무시
+  var MIN_GAP   = 300;    // 걸음 간 최소 간격 (최대 ~200보/분)
+  var MAX_GAP   = 1500;   // 걸음 간 최대 간격 (이보다 느리면 리듬 끊김)
+  var WARMUP    = 4;      // 일정 리듬으로 연속 감지돼야 카운트 시작
 
   // ── 유틸 ──
   function dateStr(d) {
@@ -612,6 +616,12 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   }
 
   // ── 걸음 감지 ──
+  function addSteps(n) {
+    todaySteps += n; unsyncedSteps += n;
+    saveSteps(todaySteps); updateStepsUI();
+    if (unsyncedSteps >= 100) syncUp();
+  }
+
   function onMotion(e) {
     if (!isTracking) return;
     var acc = e.accelerationIncludingGravity;
@@ -621,11 +631,17 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     smoothedMag = 0.10*mag + 0.90*smoothedMag;  // 기준선 더 안정적으로
     var dev = mag - smoothedMag;
     var now = Date.now();
-    if (!aboveThresh && dev > THRESHOLD && now - lastStepTs > MIN_GAP) {
-      aboveThresh = true; lastStepTs = now;
-      todaySteps++; unsyncedSteps++;
-      saveSteps(todaySteps); updateStepsUI();
-      if (unsyncedSteps >= 100) syncUp();
+    if (!aboveThresh && dev > STEP_LO) {
+      aboveThresh = true;
+      // 격한 흔들기: 카운트 안 하고 리듬도 끊음
+      if (dev > STEP_HI) { stepStreak = 0; lastStepTs = now; return; }
+      var gap = now - lastStepTs;
+      if (gap < MIN_GAP) { lastStepTs = now; return; }  // 너무 빠름 → 무시
+      if (gap > MAX_GAP) stepStreak = 1;                // 리듬 끊김 → 새로 시작
+      else               stepStreak++;                  // 걷기 리듬 유지
+      lastStepTs = now;
+      if (stepStreak === WARMUP) addSteps(WARMUP);      // 리듬 성립 → 누적분 반영
+      else if (stepStreak > WARMUP) addSteps(1);
     } else if (aboveThresh && dev < 0.5) {
       aboveThresh = false;
     }
