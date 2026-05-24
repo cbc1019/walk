@@ -227,16 +227,6 @@ input  { font-family: inherit; -webkit-appearance: none; }
   border: 1px solid #FEE2E2; border-radius: 14px; padding: 14px; font-size: 16px; font-weight: 600;
 }
 .danger-btn:active { background: #FEE2E2; }
-.notice-box {
-  background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px;
-  padding: 14px; font-size: 13px; color: #92400E; line-height: 1.7; margin-bottom: 12px;
-}
-.notice-box b { color: #B45309; }
-.step-num {
-  display: inline-block; width: 20px; height: 20px; background: #2563EB; color: white;
-  border-radius: 50%; font-size: 11px; font-weight: 700;
-  line-height: 20px; text-align: center; margin-right: 6px;
-}
 .conn-status {
   display: flex; align-items: center; gap: 8px;
   font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px;
@@ -351,16 +341,6 @@ input  { font-family: inherit; -webkit-appearance: none; }
         <div class="field-label">종료일</div>
         <input type="date" id="inputEnd" class="form-input">
         <button type="button" class="primary-btn" id="savePeriodBtn">기간 저장하기</button>
-      </div>
-
-      <div class="card">
-        <div class="section-label">Supabase 연결 안내</div>
-        <div class="notice-box">
-          <span class="step-num">1</span><b>supabase.com</b> 접속 → 새 프로젝트 생성<br>
-          <span class="step-num">2</span><b>SQL Editor</b> → <code>supabase_setup.sql</code> 파일 내용 실행<br>
-          <span class="step-num">3</span>Project Settings → API → <b>URL</b>과 <b>anon key</b> 복사<br>
-          <span class="step-num">4</span>이 HTML 파일 상단 <b>SUPABASE_URL</b>, <b>SUPABASE_ANON_KEY</b> 교체
-        </div>
       </div>
 
       <div class="card">
