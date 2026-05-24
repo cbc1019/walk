@@ -292,7 +292,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
           </div>
           <div class="progress-row">
             <span id="progressPct">0%</span>
-            <span>목표 10,000보</span>
+            <span id="progressGoal">누적 0 / 10,000보</span>
           </div>
         </div>
         <div class="sync-row">
@@ -342,6 +342,8 @@ input  { font-family: inherit; -webkit-appearance: none; }
         <input type="date" id="inputStart" class="form-input">
         <div class="field-label">종료일</div>
         <input type="date" id="inputEnd" class="form-input">
+        <div class="field-label">목표 걸음 수 (기간 누적)</div>
+        <input type="number" id="inputGoal" class="form-input" placeholder="예: 100000" min="1">
         <button type="button" class="primary-btn" id="savePeriodBtn">기간 저장하기</button>
       </div>
 
@@ -383,6 +385,8 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   var unsyncedSteps = 0;
   var rankMode     = 'today';
   var period       = null;
+  var goal         = 10000;   // 누적 목표 걸음 수 (관리자 설정)
+  var periodBaseSteps = 0;    // 기간 내 오늘 이전까지의 누적 걸음 (서버)
   var syncTimer    = null;
   var rankTimer    = null;
 
@@ -426,11 +430,20 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   function saveSyncTs(t){ lsSet('wc_sync', String(t)); }
 
   // ── 걸음 수 UI ──
+  function todayCounts() {
+    if (!period || !period.start_date) return true;
+    var t = today();
+    return t >= period.start_date && (!period.end_date || t <= period.end_date);
+  }
+
   function updateStepsUI() {
     document.getElementById('stepsNum').textContent = fmtNum(todaySteps);
-    var pct = Math.min(100, Math.round(todaySteps / 10000 * 100));
+    var cum = periodBaseSteps + (todayCounts() ? todaySteps : 0);
+    var pct = goal > 0 ? Math.min(100, Math.round(cum / goal * 100)) : 0;
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressPct').textContent  = pct + '%';
+    document.getElementById('progressGoal').textContent =
+      '누적 ' + fmtNum(cum) + ' / ' + fmtNum(goal) + '보';
     var km = (todaySteps * STRIDE_M) / 1000;
     var totalMin = Math.round(todaySteps / CADENCE);
     var h = Math.floor(totalMin / 60), m = totalMin % 60;
@@ -505,11 +518,34 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     if (!sbReady) return;
     sb.from('challenge_period').select('*').eq('id', 1).maybeSingle()
       .then(function (res) {
-        if (res.data) { period = res.data; applyPeriodUI(); }
+        if (res.data) { period = res.data; applyPeriodUI(); loadPeriodTotal(); }
+      });
+  }
+
+  // 기간 내 '오늘 이전' 누적 걸음 합산 (오늘분은 todaySteps로 실시간 반영)
+  function loadPeriodTotal() {
+    periodBaseSteps = 0;
+    if (!sbReady || !userId || !period || !period.start_date) { updateStepsUI(); return; }
+    var end = period.end_date || today();
+    sb.from('steps')
+      .select('steps, date')
+      .eq('employee_id', userId)
+      .gte('date', period.start_date)
+      .lte('date', end)
+      .then(function (res) {
+        if (!res.error && res.data) {
+          var t = today(), sum = 0;
+          res.data.forEach(function (r) { if (r.date !== t) sum += (r.steps || 0); });
+          periodBaseSteps = sum;
+        }
+        updateStepsUI();
       });
   }
 
   function applyPeriodUI() {
+    goal = (period && period.goal_steps) ? period.goal_steps : 10000;
+    document.getElementById('inputGoal').value = goal;
+    updateStepsUI();
     var badge = document.getElementById('periodBadge');
     if (!period || !period.start_date) {
       badge.style.display = 'none';
@@ -528,14 +564,17 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     var name  = document.getElementById('inputChallengeName').value.trim();
     var start = document.getElementById('inputStart').value;
     var end   = document.getElementById('inputEnd').value;
+    var goalVal = parseInt(document.getElementById('inputGoal').value, 10);
     if (!start || !end)  { alert('시작일과 종료일을 입력해 주세요.'); return; }
     if (start > end)     { alert('종료일이 시작일보다 앞에 있습니다.'); return; }
+    if (!goalVal || goalVal < 1) { alert('목표 걸음 수를 올바르게 입력해 주세요.'); return; }
     sb.from('challenge_period')
-      .upsert({ id: 1, name: name || '걷기 챌린지', start_date: start, end_date: end, updated_at: new Date().toISOString() })
+      .upsert({ id: 1, name: name || '걷기 챌린지', start_date: start, end_date: end, goal_steps: goalVal, updated_at: new Date().toISOString() })
       .then(function (res) {
         if (res.error) { alert('저장 실패: ' + res.error.message); return; }
-        period = { name: name || '걷기 챌린지', start_date: start, end_date: end };
+        period = { name: name || '걷기 챌린지', start_date: start, end_date: end, goal_steps: goalVal };
         applyPeriodUI();
+        loadPeriodTotal();
         alert('챌린지 기간이 저장되었습니다! ✅');
       });
   }
