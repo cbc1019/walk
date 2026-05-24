@@ -106,6 +106,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
   letter-spacing: -3px; font-variant-numeric: tabular-nums;
 }
 .steps-unit { font-size: 16px; color: #94A3B8; margin-top: 4px; }
+.steps-dist { font-size: 15px; color: #2563EB; font-weight: 700; margin-top: 8px; }
 
 .progress-wrap { margin-bottom: 20px; }
 .progress-bg   { background: #E2E8F0; border-radius: 99px; height: 10px; overflow: hidden; }
@@ -283,6 +284,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
         <div class="steps-display">
           <div class="steps-num" id="stepsNum">0</div>
           <div class="steps-unit">걸음</div>
+          <div class="steps-dist" id="stepsDist">약 0.00 km</div>
         </div>
         <div class="progress-wrap">
           <div class="progress-bg">
@@ -394,6 +396,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   var MIN_GAP   = 300;    // 걸음 간 최소 간격 (최대 ~200보/분)
   var MAX_GAP   = 1500;   // 걸음 간 최대 간격 (이보다 느리면 리듬 끊김)
   var WARMUP    = 4;      // 일정 리듬으로 연속 감지돼야 카운트 시작
+  var STRIDE_M  = 0.7;    // 평균 보폭(m) — 거리 환산용
 
   // ── 유틸 ──
   function dateStr(d) {
@@ -427,6 +430,8 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     var pct = Math.min(100, Math.round(todaySteps / 10000 * 100));
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressPct').textContent  = pct + '%';
+    var km = (todaySteps * STRIDE_M) / 1000;
+    document.getElementById('stepsDist').textContent = '약 ' + km.toFixed(2) + ' km';
   }
 
   // ── Supabase 동기화 ──
