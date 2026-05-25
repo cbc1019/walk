@@ -292,7 +292,7 @@ input  { font-family: inherit; -webkit-appearance: none; }
           </div>
           <div class="progress-row">
             <span id="progressPct">0%</span>
-            <span id="progressGoal">누적 0 / 10,000보</span>
+            <span id="progressGoal">0 / 10,000보</span>
           </div>
         </div>
         <div class="sync-row">
@@ -443,7 +443,7 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressPct').textContent  = pct + '%';
     document.getElementById('progressGoal').textContent =
-      '누적 ' + fmtNum(cum) + ' / ' + fmtNum(goal) + '보';
+      fmtNum(cum) + ' / ' + fmtNum(goal) + '보';
     var km = (todaySteps * STRIDE_M) / 1000;
     var totalMin = Math.round(todaySteps / CADENCE);
     var h = Math.floor(totalMin / 60), m = totalMin % 60;
