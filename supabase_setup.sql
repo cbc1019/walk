@@ -20,8 +20,12 @@ CREATE TABLE IF NOT EXISTS challenge_period (
   name       TEXT DEFAULT '걷기 챌린지',
   start_date DATE,
   end_date   DATE,
+  goal_steps INTEGER DEFAULT 10000,   -- 기간 누적 목표 걸음 수
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- (기존 테이블이 이미 있다면 아래 한 줄을 실행해 컬럼만 추가)
+ALTER TABLE challenge_period ADD COLUMN IF NOT EXISTS goal_steps INTEGER DEFAULT 10000;
 
 -- 3. 보안 정책 (내부 직원 전용이므로 전체 허용)
 ALTER TABLE steps            ENABLE ROW LEVEL SECURITY;
