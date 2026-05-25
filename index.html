@@ -393,13 +393,16 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   // ── 걸음 감지 ──
   var smoothedMag = 9.8;
   var lastStepTs  = 0;
+  var lastGap     = 0;
   var aboveThresh = false;
   var stepStreak  = 0;
   var STEP_LO   = 3.0;    // 걸음으로 볼 최소 가속 변화
-  var STEP_HI   = 12.0;   // 이보다 크면 격한 흔들기로 보고 무시
+  var STEP_HI   = 10.0;   // 이보다 크면 격한 흔들기로 보고 무시
   var MIN_GAP   = 300;    // 걸음 간 최소 간격 (최대 ~200보/분)
   var MAX_GAP   = 1500;   // 걸음 간 최대 간격 (이보다 느리면 리듬 끊김)
-  var WARMUP    = 4;      // 일정 리듬으로 연속 감지돼야 카운트 시작
+  var WARMUP    = 6;      // 일정 리듬으로 연속 감지돼야 카운트 시작
+  var GAP_LO    = 0.6;    // 직전 간격 대비 허용 하한 (리듬 규칙성)
+  var GAP_HI    = 1.7;    // 직전 간격 대비 허용 상한 (리듬 규칙성)
   var STRIDE_M  = 0.7;    // 평균 보폭(m) — 거리 환산용
   var CADENCE   = 100;    // 평균 분당 걸음 수 — 시간 환산용
 
@@ -662,12 +665,17 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     var now = Date.now();
     if (!aboveThresh && dev > STEP_LO) {
       aboveThresh = true;
-      // 격한 흔들기: 카운트 안 하고 리듬도 끊음
-      if (dev > STEP_HI) { stepStreak = 0; lastStepTs = now; return; }
+      // 격한 흔들기: 카운트 안 하고 리듬 초기화
+      if (dev > STEP_HI) { stepStreak = 0; lastGap = 0; lastStepTs = now; return; }
       var gap = now - lastStepTs;
       if (gap < MIN_GAP) { lastStepTs = now; return; }  // 너무 빠름 → 무시
-      if (gap > MAX_GAP) stepStreak = 1;                // 리듬 끊김 → 새로 시작
-      else               stepStreak++;                  // 걷기 리듬 유지
+      if (gap > MAX_GAP) {                              // 리듬 끊김 → 새로 시작
+        stepStreak = 1; lastGap = 0;
+      } else if (lastGap > 0 && (gap < lastGap * GAP_LO || gap > lastGap * GAP_HI)) {
+        stepStreak = 1; lastGap = gap;                  // 간격 불규칙 → 리듬 깨짐
+      } else {
+        stepStreak++; lastGap = gap;                    // 규칙적 → 리듬 유지
+      }
       lastStepTs = now;
       if (stepStreak === WARMUP) addSteps(WARMUP);      // 리듬 성립 → 누적분 반영
       else if (stepStreak > WARMUP) addSteps(1);
