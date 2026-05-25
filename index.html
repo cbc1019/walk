@@ -440,15 +440,15 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
   }
 
   function updateStepsUI() {
-    document.getElementById('stepsNum').textContent = fmtNum(todaySteps);
     var cum = periodBaseSteps + (todayCounts() ? todaySteps : 0);
+    document.getElementById('stepsNum').textContent = fmtNum(cum);
     var pct = goal > 0 ? Math.min(100, Math.round(cum / goal * 100)) : 0;
     document.getElementById('progressFill').style.width = pct + '%';
     document.getElementById('progressPct').textContent  = pct + '%';
     document.getElementById('progressGoal').textContent =
       fmtNum(cum) + ' / ' + fmtNum(goal) + '보';
-    var km = (todaySteps * STRIDE_M) / 1000;
-    var totalMin = Math.round(todaySteps / CADENCE);
+    var km = (cum * STRIDE_M) / 1000;
+    var totalMin = Math.round(cum / CADENCE);
     var h = Math.floor(totalMin / 60), m = totalMin % 60;
     var timeStr = h > 0 ? (h + '시간 ' + m + '분') : (m + '분');
     document.getElementById('stepsDist').textContent =
