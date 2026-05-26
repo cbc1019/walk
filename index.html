@@ -601,15 +601,26 @@ var ADMIN_IDS         = ['190950']; // 관리자 사번 목록 (여러 명: ['19
     }
     document.getElementById('rankingCard').innerHTML = '<div class="loading-msg">불러오는 중...</div>';
 
-    // 실시간 순위 = 오늘 걸음 수 기준
-    sb.from('steps')
-      .select('employee_id, dept, name, steps')
-      .eq('date', today())
-      .order('steps', { ascending: false })
-      .then(function (res) {
-        if (res.error) { showRankError(res.error.message); return; }
-        renderRanking(res.data || []);
-      });
+    // 기간이 설정돼 있으면 기간 누적 순위, 아니면 오늘 걸음 순위
+    if (period && period.start_date) {
+      sb.rpc('get_period_ranking', { p_start: period.start_date, p_end: period.end_date || today() })
+        .then(function (res) {
+          if (res.error) { showRankError(res.error.message); return; }
+          var list = (res.data || []).map(function (r) {
+            return { employee_id: r.employee_id, name: r.name, dept: r.dept, steps: r.total_steps };
+          });
+          renderRanking(list);
+        });
+    } else {
+      sb.from('steps')
+        .select('employee_id, dept, name, steps')
+        .eq('date', today())
+        .order('steps', { ascending: false })
+        .then(function (res) {
+          if (res.error) { showRankError(res.error.message); return; }
+          renderRanking(res.data || []);
+        });
+    }
   }
 
   function showRankError(msg) {
